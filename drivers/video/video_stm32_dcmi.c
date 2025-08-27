@@ -18,6 +18,8 @@
 #include <zephyr/drivers/dma.h>
 #include <zephyr/drivers/dma/dma_stm32.h>
 
+#include <app/drivers/jpeg.h>
+
 #include <stm32_ll_dma.h>
 
 #include "video_device.h"
@@ -45,6 +47,8 @@ struct video_stm32_dcmi_data {
 	struct k_fifo fifo_in;
 	struct k_fifo fifo_out;
 	struct video_buffer *vbuf;
+	const struct device *jpeg_dev;
+	struct video_buffer *jpeg_vbuf;
 };
 
 struct video_stm32_dcmi_config {
@@ -52,6 +56,7 @@ struct video_stm32_dcmi_config {
 	irq_config_func_t irq_config;
 	const struct pinctrl_dev_config *pctrl;
 	const struct device *sensor_dev;
+	const struct device *jpeg_dev;
 	const struct stream dma;
 };
 
@@ -105,17 +110,36 @@ resume:
 	HAL_DCMI_Resume(hdcmi);
 }
 
+static void dcmi_jpeg_decode_cplt_handler(const struct device *dev)
+{
+	struct video_stm32_dcmi_data *dev_data = dev->data;
+	dev_data->jpeg_vbuf->timestamp = k_uptime_get_32();
+	k_fifo_put(&dev_data->fifo_out, dev_data->jpeg_vbuf);
+	dev_data->jpeg_vbuf = NULL;
+	int err =
+		HAL_DCMI_Start_DMA(&dev_data->hdcmi, DCMI_MODE_CONTINUOUS,
+				   (uint32_t)dev_data->vbuf->buffer, dev_data->vbuf->bytesused / 4);
+	if (err != HAL_OK) {
+		LOG_ERR("Failed to start DCMI DMA");
+	}
+}
+
 void HAL_DCMI_VsyncEventCallback(DCMI_HandleTypeDef *hdcmi)
 {
 	struct video_stm32_dcmi_data *dev_data =
 		CONTAINER_OF(hdcmi, struct video_stm32_dcmi_data, hdcmi);
+
 	struct video_buffer *vbuf;
 
 	if (dev_data->fmt.pixelformat != VIDEO_PIX_FMT_JPEG) {
 		return;
 	}
 
-	HAL_DCMI_Suspend(hdcmi);
+	/*
+	 * Stop DMA as in JPEG mode
+	 * it may be still waiting for more data to come, so we can't restart it directly
+	 */
+	HAL_DCMI_Stop(&dev_data->hdcmi);
 
 	vbuf = k_fifo_get(&dev_data->fifo_in, K_NO_WAIT);
 
@@ -126,27 +150,30 @@ void HAL_DCMI_VsyncEventCallback(DCMI_HandleTypeDef *hdcmi)
 
 	vbuf->bytesused = vbuf->size - __HAL_DMA_GET_COUNTER(dev_data->hdcmi.DMA_Handle);
 
+	if (dev_data->jpeg_dev) {
+		if (jpeg_hw_decode(dev_data->jpeg_dev, dev_data->vbuf->buffer, vbuf->bytesused,
+				   vbuf->buffer)) {
+			LOG_ERR("Failed to start JPEG decoder");
+			goto resume;
+		}
+		dev_data->jpeg_vbuf = vbuf;
+		return;
+	} else {
+		LOG_ERR("No jpeg device found");
+	}
+
 	vbuf->timestamp = k_uptime_get_32();
 	memcpy(vbuf->buffer, dev_data->vbuf->buffer, vbuf->bytesused);
 
 	k_fifo_put(&dev_data->fifo_out, vbuf);
 
 resume:
-#if defined(CONFIG_SOC_SERIES_STM32U5X)
-	/*
-	 * Stop DMA as in JPEG mode
-	 * it may be still waiting for more data to come, so we can't restart it directly
-	 */
-	HAL_DCMI_Stop(&dev_data->hdcmi);
 	int err =
 		HAL_DCMI_Start_DMA(&dev_data->hdcmi, DCMI_MODE_CONTINUOUS,
 				   (uint32_t)dev_data->vbuf->buffer, dev_data->vbuf->bytesused / 4);
 	if (err != HAL_OK) {
 		LOG_ERR("Failed to start DCMI DMA");
 	}
-#else
-	HAL_DCMI_Resume(hdcmi);
-#endif
 }
 
 static void stm32_dcmi_isr(const struct device *dev)
@@ -414,6 +441,12 @@ static int video_stm32_dcmi_set_stream(const struct device *dev, bool enable,
 
 	if (data->fmt.pixelformat == VIDEO_PIX_FMT_JPEG) {
 		data->hdcmi.Instance->CR |= DCMI_CR_JPEG;
+
+		data->jpeg_dev = config->jpeg_dev;
+		if (config->jpeg_dev) {
+			jpeg_hw_register_cplt_callback(config->jpeg_dev, dev,
+						       dcmi_jpeg_decode_cplt_handler);
+		}
 	}
 
 	err = HAL_DCMI_Start_DMA(&data->hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)data->vbuf->buffer,
@@ -671,6 +704,7 @@ static const struct video_stm32_dcmi_config video_stm32_dcmi_config_0 = {
 	.irq_config = video_stm32_dcmi_irq_config_func,
 	.pctrl = PINCTRL_DT_INST_DEV_CONFIG_GET(0),
 	.sensor_dev = SOURCE_DEV(0),
+	.jpeg_dev = DEVICE_DT_GET_OR_NULL(DT_INST_PHANDLE(0, jpeg_dev)),
 	DCMI_DMA_CHANNEL(0, PERIPHERAL, MEMORY)};
 
 static int video_stm32_dcmi_init(const struct device *dev)
