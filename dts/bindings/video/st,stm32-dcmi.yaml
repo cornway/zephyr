@@ -46,6 +46,14 @@ properties:
               STM32_DMA_MEM_INC | STM32_DMA_PERIPH_8BITS | STM32_DMA_MEM_32BITS |
               STM32_DMA_PRIORITY_HIGH) STM32_DMA_FIFO_1_4>;
 
+  jpeg-dev:
+    required: true
+    type: phandle
+    description: |
+      phandle of JPEG decoder
+
+      jpeg-dev = <&jpeg0>
+
 child-binding:
   child-binding:
     include: video-interfaces.yaml
