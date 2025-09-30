@@ -202,7 +202,7 @@ void HAL_DMA_ErrorCallback(DMA_HandleTypeDef *hdma)
 #if defined(CONFIG_SOC_SERIES_STM32U5X)
 static int stm32_dma_list_init(DMA_HandleTypeDef *hdma)
 {
-	static DMA_NodeTypeDef Node;
+	static DMA_NodeTypeDef Node_1, Node_2;
 	static DMA_QListTypeDef Queue;
 
 	HAL_StatusTypeDef ret = HAL_OK;
@@ -228,8 +228,10 @@ static int stm32_dma_list_init(DMA_HandleTypeDef *hdma)
 	pNodeConfig.DstAddress = 0;
 	pNodeConfig.DataSize = 0;
 
-	ret |= HAL_DMAEx_List_BuildNode(&pNodeConfig, &Node);
-	ret |= HAL_DMAEx_List_InsertNode_Tail(&Queue, &Node);
+	ret |= HAL_DMAEx_List_BuildNode(&pNodeConfig, &Node_1);
+	ret |= HAL_DMAEx_List_InsertNode_Tail(&Queue, &Node_1);
+	ret |= HAL_DMAEx_List_BuildNode(&pNodeConfig, &Node_2);
+	ret |= HAL_DMAEx_List_InsertNode_Tail(&Queue, &Node_2);
 	ret |= HAL_DMAEx_List_SetCircularMode(&Queue);
 	ret |= HAL_DMAEx_List_LinkQ(hdma, &Queue);
 
