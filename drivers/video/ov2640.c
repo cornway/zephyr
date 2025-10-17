@@ -551,6 +551,12 @@ struct ov2640_data {
 		.height_step = 0 \
 	}
 
+#if defined(CONFIG_GRINREFLEX_VIDEO_WIDTH) && defined(CONFIG_GRINREFLEX_VIDEO_HEIGHT)
+static const struct video_format_cap fmts[] = {
+	OV2640_VIDEO_FORMAT_CAP(CONFIG_GRINREFLEX_VIDEO_WIDTH, CONFIG_GRINREFLEX_VIDEO_HEIGHT, VIDEO_PIX_FMT_JPEG), /**/
+	OV2640_VIDEO_FORMAT_CAP(CONFIG_GRINREFLEX_VIDEO_WIDTH, CONFIG_GRINREFLEX_VIDEO_HEIGHT, VIDEO_PIX_FMT_RGB565), /**/
+	{0}};
+#else
 static const struct video_format_cap fmts[] = {
 	OV2640_VIDEO_FORMAT_CAP(QQVGA_WIDTH, QQVGA_HEIGHT,
 				VIDEO_PIX_FMT_RGB565), /* 160 x 120 QQVGA */
@@ -577,6 +583,7 @@ static const struct video_format_cap fmts[] = {
 	OV2640_VIDEO_FORMAT_CAP(SXGA_WIDTH, SXGA_HEIGHT, VIDEO_PIX_FMT_JPEG), /* 1280 x 1024 SXGA */
 	OV2640_VIDEO_FORMAT_CAP(UXGA_WIDTH, UXGA_HEIGHT, VIDEO_PIX_FMT_JPEG), /* 1600 x 1200 UXGA */
 	{0}};
+#endif /* defined(CONFIG_GRINREFLEX_VIDEO_WIDTH) && defined(CONFIG_GRINREFLEX_VIDEO_HEIGHT) */
 
 static int ov2640_write_reg(const struct i2c_dt_spec *spec, uint8_t reg_addr,
 				uint8_t value)
@@ -688,9 +695,13 @@ static int ov2640_set_output_format(const struct device *dev,
 		ret |= ov2640_write_reg(&cfg->i2c, IMAGE_MODE, IMAGE_MODE_JPEG_EN);
 	} else if (output_format == VIDEO_PIX_FMT_RGB565)	{
 		/* Disable JPEG compression and set output to RGB565 */
+#if defined(CONFIG_GRINREFLEX_VIDEO_RGB565_SWAP_BYTES)
+		ret |= ov2640_write_reg(&cfg->i2c, IMAGE_MODE, IMAGE_MODE_RGB565 | (1 << 0));
+#else
 		ret |= ov2640_write_reg(&cfg->i2c, IMAGE_MODE, IMAGE_MODE_RGB565);
+#endif
 	} else {
-		LOG_ERR("Image format not supported");
+		LOG_ERR("Image format not supported %d", output_format);
 		return -ENOTSUP;
 	}
 	k_msleep(30);
@@ -860,8 +871,8 @@ static int ov2640_set_vertical_flip(const struct device *dev, int enable)
 static const struct ov2640_win_size *ov2640_select_win(uint32_t width, uint32_t height)
 {
 	for (int i = 0; i < ARRAY_SIZE(ov2640_supported_win_sizes); i++) {
-		if (ov2640_supported_win_sizes[i].width >= width &&
-		    ov2640_supported_win_sizes[i].height >= height) {
+		if (ov2640_supported_win_sizes[i].width == width &&
+		    ov2640_supported_win_sizes[i].height == height) {
 			return &ov2640_supported_win_sizes[i];
 		}
 	}
@@ -879,7 +890,7 @@ static int ov2640_set_resolution(const struct device *dev, uint16_t img_width, u
 	const struct ov2640_win_size *win = ov2640_select_win(w, h);
 
 	if (win == NULL) {
-		LOG_ERR("Couldn't find window size for desired resolution setting");
+		LOG_ERR("Couldn't find window size for desired resolution setting: %d:%d", img_width, img_height);
 		return -EINVAL;
 	}
 	LOG_INF("Selected resolution %ux%u", win->width, win->height);
@@ -1101,11 +1112,19 @@ static int ov2640_init(const struct device *dev)
 {
 	int ret = 0;
 	/* set default/init format SVGA RGB565 */
+#if defined(CONFIG_GRINREFLEX_VIDEO_WIDTH) && defined(CONFIG_GRINREFLEX_VIDEO_HEIGHT)
+	struct video_format fmt = {
+		.pixelformat = VIDEO_PIX_FMT_RGB565,
+		.width = CONFIG_GRINREFLEX_VIDEO_WIDTH,
+		.height = CONFIG_GRINREFLEX_VIDEO_HEIGHT,
+	};
+#else
 	struct video_format fmt = {
 		.pixelformat = VIDEO_PIX_FMT_RGB565,
 		.width = SVGA_WIDTH,
 		.height = SVGA_HEIGHT,
 	};
+#endif
 
 #if DT_INST_NODE_HAS_PROP(0, reset_gpios)
 	const struct ov2640_config *cfg = dev->config;
@@ -1128,7 +1147,7 @@ static int ov2640_init(const struct device *dev)
 	}
 
 	ov2640_soft_reset(dev);
-	k_msleep(300);
+	k_msleep(50);
 
 	ov2640_write_all(dev, default_regs, ARRAY_SIZE(default_regs));
 
