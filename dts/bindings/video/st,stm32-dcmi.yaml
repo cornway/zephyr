@@ -47,7 +47,7 @@ properties:
               STM32_DMA_PRIORITY_HIGH) STM32_DMA_FIFO_1_4>;
 
   jpeg-dev:
-    required: true
+    required: false
     type: phandle
     description: |
       phandle of JPEG decoder

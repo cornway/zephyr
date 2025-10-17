@@ -127,17 +127,15 @@ void HAL_DCMI_VsyncEventCallback(DCMI_HandleTypeDef *hdcmi)
 		goto resume;
 	}
 
-	vbuf->bytesused = vbuf->size - __HAL_DMA_GET_COUNTER(dev_data->hdcmi.DMA_Handle);
+	//vbuf->bytesused = vbuf->size - __HAL_DMA_GET_COUNTER(dev_data->hdcmi.DMA_Handle);
 
 	if (dev_data->jpeg_dev) {
-		if (jpeg_hw_decode(dev_data->jpeg_dev, dev_data->vbuf->buffer, vbuf->bytesused, vbuf->buffer)) {
+		if (jpeg_hw_decode(dev_data->jpeg_dev, dev_data->vbuf->buffer, vbuf->size, vbuf->buffer)) {
 			LOG_ERR("Failed to start JPEG decoder");
 			goto resume;
 		}
 		dev_data->jpeg_vbuf = vbuf;
 		return;
-	} else {
-		LOG_ERR("No jpeg device found");
 	}
 
 	vbuf->timestamp = k_uptime_get_32();
