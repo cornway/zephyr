@@ -775,12 +775,27 @@
 			};
 		};
 
+		dcmi: dcmi@58028400 {
+			compatible = "st,stm32-dcmi";
+			reg = <0x58028400 0x400>;
+			interrupts = <188 0>;
+			interrupt-names = "dcmi";
+			clocks = <&rcc STM32_CLOCK(AHB5, 6)>,
+					<&rcc STM32_SRC_CKPER PSSI_SEL(1)>;
+
+			dmas = <&gpdma1 5 140 (STM32_DMA_PERIPH_TO_MEMORY | STM32_DMA_PERIPH_NO_INC |
+				STM32_DMA_MEM_INC | STM32_DMA_PERIPH_32BITS | STM32_DMA_MEM_32BITS |
+				STM32_DMA_PRIORITY_HIGH) STM32_DMA_FIFO_1_4>;
+			status = "disabled";
+		};
+
 		mcos {
 			mco1: mco1 {
 				compatible = "st,stm32-clock-mco";
 				status = "disabled";
 			};
 		};
+
 		ethernet@58036000 {
 			reg = <0x58036000 0x8000>;
 			compatible = "st,stm32-ethernet-controller";

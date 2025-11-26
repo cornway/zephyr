@@ -197,7 +197,7 @@ void HAL_DMA_ErrorCallback(DMA_HandleTypeDef *hdma)
 	LOG_WRN("%s", __func__);
 }
 
-#if defined(CONFIG_SOC_SERIES_STM32U5X)
+#if defined(CONFIG_SOC_SERIES_STM32U5X) || defined(CONFIG_SOC_SERIES_STM32N6X)
 static int stm32_dma_list_init(DMA_HandleTypeDef *hdma)
 {
 	static DMA_NodeTypeDef Node_1, Node_2;
@@ -273,7 +273,7 @@ static int stm32_dma_init(const struct device *dev)
 	/*** Configure the DMA ***/
 	/* Set the parameters to be configured */
 
-#if defined(CONFIG_SOC_SERIES_STM32U5X)
+#if defined(CONFIG_SOC_SERIES_STM32U5X) || defined(CONFIG_SOC_SERIES_STM32N6X)
 	hdma.Init.Request = GPDMA1_REQUEST_DCMI_PSSI;
 	hdma.Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
 	hdma.Init.Direction = DMA_PERIPH_TO_MEMORY;
@@ -311,7 +311,7 @@ static int stm32_dma_init(const struct device *dev)
 	hdma.Instance = __LL_DMA_GET_STREAM_INSTANCE(config->dma.reg, config->dma.channel);
 #elif defined(CONFIG_SOC_SERIES_STM32L4X)
 	hdma.Instance = __LL_DMA_GET_CHANNEL_INSTANCE(config->dma.reg, config->dma.channel);
-#elif defined(CONFIG_SOC_SERIES_STM32U5X)
+#elif defined(CONFIG_SOC_SERIES_STM32U5X) || defined(CONFIG_SOC_SERIES_STM32N6X)
 	hdma.Instance = LL_DMA_GET_CHANNEL_INSTANCE(config->dma.reg, config->dma.channel);
 #endif
 
@@ -323,7 +323,7 @@ static int stm32_dma_init(const struct device *dev)
 		return -EIO;
 	}
 
-#if defined(CONFIG_SOC_SERIES_STM32U5X)
+#if defined(CONFIG_SOC_SERIES_STM32U5X) || defined(CONFIG_SOC_SERIES_STM32N6X)
 	if (HAL_DMAEx_List_Init(&hdma) != HAL_OK) {
 		LOG_ERR("HAL_DMAEx_List_Init Failed");
 		return -EINVAL;
