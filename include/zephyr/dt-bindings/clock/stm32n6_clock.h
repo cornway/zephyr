@@ -118,7 +118,9 @@
 #define LTDC_SEL(val)		STM32_DT_CLOCK_SELECT((val), 3, 24, CCIPR4_REG)
 /** CCIPR5 devices */
 #define MCO1_SEL(val)		STM32_DT_CLOCK_SELECT((val), 7, 0, CCIPR5_REG)
+#define MCO1_PRE(val)       STM32_DT_CLOCK_SELECT((val), 15, 4, CCIPR5_REG)
 #define MCO2_SEL(val)		STM32_DT_CLOCK_SELECT((val), 7, 8, CCIPR5_REG)
+#define MCO2_PRE(val)       STM32_DT_CLOCK_SELECT((val), 15, 12, CCIPR5_REG)
 #define MDF1SEL(val)		STM32_DT_CLOCK_SELECT((val), 7, 16, CCIPR5_REG)
 /** CCIPR6 devices */
 #define XSPI1_SEL(val)		STM32_DT_CLOCK_SELECT((val), 3, 0, CCIPR6_REG)
