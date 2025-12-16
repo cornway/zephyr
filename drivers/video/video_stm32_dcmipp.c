@@ -25,14 +25,14 @@
 
 /* On STM32MP13X HAL, below two functions have different names */
 #if defined(CONFIG_SOC_SERIES_STM32MP13X)
-#define HAL_DCMIPP_PIPE_SetConfig HAL_DCMIPP_PIPE_Config
+#define HAL_DCMIPP_PIPE_SetConfig     HAL_DCMIPP_PIPE_Config
 #define HAL_DCMIPP_PARALLEL_SetConfig HAL_DCMIPP_SetParallelConfig
 #endif
 
 #if DT_HAS_COMPAT_STATUS_OKAY(st_stm32n6_dcmipp)
 #define STM32_DCMIPP_HAS_CSI
-#define STM32_DCMIPP_HAS_PIXEL_PIPES
 #endif
+#define STM32_DCMIPP_HAS_PIXEL_PIPES
 
 #if defined(STM32_DCMIPP_HAS_PIXEL_PIPES)
 /* Weak function declaration in order to interface with external ISP handler */
