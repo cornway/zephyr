@@ -334,6 +334,12 @@ static int stm32_dcmipp_conf_parallel(const struct device *dev,
 	parallel_cfg.ExtendedDataMode = DCMIPP_INTERFACE_8BITS;
 	parallel_cfg.SynchroMode      = DCMIPP_SYNCHRO_HARDWARE;
 
+	if (dcmipp->hdcmipp.State == HAL_DCMIPP_STATE_READY) {
+		dcmipp->hdcmipp.State = HAL_DCMIPP_STATE_INIT;
+		LOG_WRN("DCMIPP Parallel interface already configured, WA applied");
+	}
+
+
 	ret = HAL_DCMIPP_PARALLEL_SetConfig(&dcmipp->hdcmipp, &parallel_cfg);
 	if (ret != HAL_OK) {
 		LOG_ERR("Failed to configure DCMIPP Parallel interface");
