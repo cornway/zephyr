@@ -52,21 +52,24 @@ extern "C" {
  * @param delay_ the desired delay field in the struct spi_config's
  *               spi_cs_control, if there is one
  */
-#define MIPI_DBI_SPI_CONFIG_DT(node_id, operation_, delay_)		\
-	{								\
-		.frequency = DT_PROP(node_id, mipi_max_frequency),	\
-		.operation = (operation_) |				\
-			DT_PROP_OR(node_id, duplex, 0) |			\
-			COND_CODE_1(DT_PROP(node_id, mipi_cpol), SPI_MODE_CPOL, (0)) |	\
-			COND_CODE_1(DT_PROP(node_id, mipi_cpha), SPI_MODE_CPHA, (0)) |	\
-			COND_CODE_1(DT_PROP(node_id, mipi_hold_cs), SPI_HOLD_ON_CS, (0)),	\
-		.slave = DT_REG_ADDR(node_id),				\
-		.cs = {							\
-			COND_CODE_1(DT_SPI_DEV_HAS_CS_GPIOS(node_id),	\
-			(SPI_CS_CONTROL_INIT_GPIO(node_id, delay_)),	\
-			(SPI_CS_CONTROL_INIT_NATIVE(node_id)))		\
-			.cs_is_gpio = DT_SPI_DEV_HAS_CS_GPIOS(node_id),	\
-		},							\
+#define MIPI_DBI_SPI_CONFIG_DT(node_id, operation_, delay_)                                        \
+	{                                                                                          \
+		.frequency = DT_PROP(node_id, mipi_max_frequency),                                 \
+		.operation =                                                                       \
+			(operation_) | DT_PROP_OR(node_id, duplex, 0) |                            \
+			COND_CODE_1(DT_PROP(node_id, mipi_cpol), SPI_MODE_CPOL, (0)) |                            \
+				COND_CODE_1(DT_PROP(node_id, mipi_cpha), SPI_MODE_CPHA, (0)) |                    \
+					COND_CODE_1(DT_PROP(node_id, mipi_hold_cs), SPI_HOLD_ON_CS, (0)),         \
+						.slave = DT_REG_ADDR(node_id),                     \
+						.cs = {                                            \
+							.gpio = GPIO_DT_SPEC_GET_BY_IDX_OR(        \
+								DT_PHANDLE(DT_PARENT(node_id),     \
+									   spi_dev),               \
+								cs_gpios,                          \
+								DT_REG_ADDR_RAW(node_id), {}),     \
+							.delay = (delay_),                         \
+							.cs_is_gpio = true,                        \
+						},                                                 \
 	}
 
 /**
@@ -79,7 +82,7 @@ extern "C" {
  * @param delay_ the desired delay field in the struct spi_config's
  *               spi_cs_control, if there is one
  */
-#define MIPI_DBI_SPI_CONFIG_DT_INST(inst, operation_, delay_)		\
+#define MIPI_DBI_SPI_CONFIG_DT_INST(inst, operation_, delay_)                                      \
 	MIPI_DBI_SPI_CONFIG_DT(DT_DRV_INST(inst), operation_, delay_)
 
 /**
@@ -94,10 +97,10 @@ extern "C" {
  * @param delay_ the desired delay field in the struct spi_config's
  *               spi_cs_control, if there is one
  */
-#define MIPI_DBI_CONFIG_DT(node_id, operation_, delay_)			\
-	{								\
-		.mode = DT_STRING_UPPER_TOKEN(node_id, mipi_mode),	\
-		.config = MIPI_DBI_SPI_CONFIG_DT(node_id, operation_, delay_), \
+#define MIPI_DBI_CONFIG_DT(node_id, operation_, delay_)                                            \
+	{                                                                                          \
+		.mode = DT_STRING_UPPER_TOKEN(node_id, mipi_mode),                                 \
+		.config = MIPI_DBI_SPI_CONFIG_DT(node_id, operation_, delay_),                     \
 	}
 
 /**
@@ -109,7 +112,7 @@ extern "C" {
  * @param delay_ the desired delay field in the struct spi_config's
  *               spi_cs_control, if there is one
  */
-#define MIPI_DBI_CONFIG_DT_INST(inst, operation_, delay_)		\
+#define MIPI_DBI_CONFIG_DT_INST(inst, operation_, delay_)                                          \
 	MIPI_DBI_CONFIG_DT(DT_DRV_INST(inst), operation_, delay_)
 
 /**
@@ -121,8 +124,7 @@ extern "C" {
  * @param edge_prop Property name for the TE mode that should be read from
  *                  devicetree
  */
-#define MIPI_DBI_TE_MODE_DT(node_id, edge_prop)                           \
-	DT_STRING_UPPER_TOKEN(node_id, edge_prop)
+#define MIPI_DBI_TE_MODE_DT(node_id, edge_prop) DT_STRING_UPPER_TOKEN(node_id, edge_prop)
 
 /**
  * @brief Get the MIPI DBI TE mode for device instance
@@ -133,7 +135,7 @@ extern "C" {
  * @param edge_prop Property name for the TE mode that should be read from
  *                  devicetree
  */
-#define MIPI_DBI_TE_MODE_DT_INST(inst, edge_prop)                         \
+#define MIPI_DBI_TE_MODE_DT_INST(inst, edge_prop)                                                  \
 	DT_STRING_UPPER_TOKEN(DT_DRV_INST(inst), edge_prop)
 
 /**
@@ -148,26 +150,18 @@ struct mipi_dbi_config {
 	struct spi_config config;
 };
 
-
 /** MIPI-DBI host driver API */
 __subsystem struct mipi_dbi_driver_api {
-	int (*command_write)(const struct device *dev,
-			     const struct mipi_dbi_config *config, uint8_t cmd,
-			     const uint8_t *data, size_t len);
-	int (*command_read)(const struct device *dev,
-			    const struct mipi_dbi_config *config, uint8_t *cmds,
-			    size_t num_cmds, uint8_t *response, size_t len);
-	int (*write_display)(const struct device *dev,
-			     const struct mipi_dbi_config *config,
-			     const uint8_t *framebuf,
-			     struct display_buffer_descriptor *desc,
+	int (*command_write)(const struct device *dev, const struct mipi_dbi_config *config,
+			     uint8_t cmd, const uint8_t *data, size_t len);
+	int (*command_read)(const struct device *dev, const struct mipi_dbi_config *config,
+			    uint8_t *cmds, size_t num_cmds, uint8_t *response, size_t len);
+	int (*write_display)(const struct device *dev, const struct mipi_dbi_config *config,
+			     const uint8_t *framebuf, struct display_buffer_descriptor *desc,
 			     enum display_pixel_format pixfmt);
 	int (*reset)(const struct device *dev, k_timeout_t delay);
-	int (*release)(const struct device *dev,
-		       const struct mipi_dbi_config *config);
-	int (*configure_te)(const struct device *dev,
-			    uint8_t edge,
-			    k_timeout_t delay);
+	int (*release)(const struct device *dev, const struct mipi_dbi_config *config);
+	int (*configure_te)(const struct device *dev, uint8_t edge, k_timeout_t delay);
 };
 
 /**
@@ -191,12 +185,10 @@ __subsystem struct mipi_dbi_driver_api {
  * @retval -ENOSYS not implemented
  */
 static inline int mipi_dbi_command_write(const struct device *dev,
-					 const struct mipi_dbi_config *config,
-					 uint8_t cmd, const uint8_t *data,
-					 size_t len)
+					 const struct mipi_dbi_config *config, uint8_t cmd,
+					 const uint8_t *data, size_t len)
 {
-	const struct mipi_dbi_driver_api *api =
-		(const struct mipi_dbi_driver_api *)dev->api;
+	const struct mipi_dbi_driver_api *api = (const struct mipi_dbi_driver_api *)dev->api;
 
 	if (api->command_write == NULL) {
 		return -ENOSYS;
@@ -222,12 +214,10 @@ static inline int mipi_dbi_command_write(const struct device *dev,
  * @retval -ENOSYS not implemented
  */
 static inline int mipi_dbi_command_read(const struct device *dev,
-					const struct mipi_dbi_config *config,
-					uint8_t *cmds, size_t num_cmd,
-					uint8_t *response, size_t len)
+					const struct mipi_dbi_config *config, uint8_t *cmds,
+					size_t num_cmd, uint8_t *response, size_t len)
 {
-	const struct mipi_dbi_driver_api *api =
-		(const struct mipi_dbi_driver_api *)dev->api;
+	const struct mipi_dbi_driver_api *api = (const struct mipi_dbi_driver_api *)dev->api;
 
 	if (api->command_read == NULL) {
 		return -ENOSYS;
@@ -260,8 +250,7 @@ static inline int mipi_dbi_write_display(const struct device *dev,
 					 struct display_buffer_descriptor *desc,
 					 enum display_pixel_format pixfmt)
 {
-	const struct mipi_dbi_driver_api *api =
-		(const struct mipi_dbi_driver_api *)dev->api;
+	const struct mipi_dbi_driver_api *api = (const struct mipi_dbi_driver_api *)dev->api;
 
 	if (api->write_display == NULL) {
 		return -ENOSYS;
@@ -282,8 +271,7 @@ static inline int mipi_dbi_write_display(const struct device *dev,
  */
 static inline int mipi_dbi_reset(const struct device *dev, uint32_t delay_ms)
 {
-	const struct mipi_dbi_driver_api *api =
-		(const struct mipi_dbi_driver_api *)dev->api;
+	const struct mipi_dbi_driver_api *api = (const struct mipi_dbi_driver_api *)dev->api;
 
 	if (api->reset == NULL) {
 		return -ENOSYS;
@@ -308,11 +296,9 @@ static inline int mipi_dbi_reset(const struct device *dev, uint32_t delay_ms)
  * @retval -ENOSYS not implemented
  * @retval -ENOTSUP not supported
  */
-static inline int mipi_dbi_release(const struct device *dev,
-				   const struct mipi_dbi_config *config)
+static inline int mipi_dbi_release(const struct device *dev, const struct mipi_dbi_config *config)
 {
-	const struct mipi_dbi_driver_api *api =
-		(const struct mipi_dbi_driver_api *)dev->api;
+	const struct mipi_dbi_driver_api *api = (const struct mipi_dbi_driver_api *)dev->api;
 
 	if (api->release == NULL) {
 		return -ENOSYS;
@@ -346,12 +332,9 @@ static inline int mipi_dbi_release(const struct device *dev,
  * @retval -ENOSYS not implemented
  * @retval -ENOTSUP not supported
  */
-static inline int mipi_dbi_configure_te(const struct device *dev,
-					uint8_t edge,
-					uint32_t delay_us)
+static inline int mipi_dbi_configure_te(const struct device *dev, uint8_t edge, uint32_t delay_us)
 {
-	const struct mipi_dbi_driver_api *api =
-		(const struct mipi_dbi_driver_api *)dev->api;
+	const struct mipi_dbi_driver_api *api = (const struct mipi_dbi_driver_api *)dev->api;
 
 	if (api->configure_te == NULL) {
 		return -ENOSYS;
